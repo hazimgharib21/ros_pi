@@ -9,11 +9,45 @@
     <script type="text/javascript" 
       src="http://static.robotwebtools.org/roslibjs/current/roslib.min.js">
     </script>
+    <script 
+      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js">
+    </script>
+
     <script type="text/javascript"
       src="/js/roslib.min.js">
     </script>
 
     <script type="text/javascript" type="text/javascript">
+
+      window.onload = function(){
+
+        var ctx = document.getElementById("line-chart");
+        var lineChart = new  Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: ["","","","","","","","","","","","","","","","","","","",""],
+            datasets: [{
+              data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            }]
+          },
+          options: {
+            responsive: true,
+            title: {
+              display: true,
+              text: "CPU Temperature",
+            },
+            legend: {
+              display: false
+            },
+            scales: {
+              yAxes: [{
+                ticks: {
+                  begitAtZero: false,
+                }
+              }]
+            }
+          }
+        });
 
       var ros = new ROSLIB.Ros();
 
@@ -51,7 +85,13 @@
 
       temp.subscribe(function(message){
         document.getElementById('cpu_temp').innerHTML = message.data;
+        lineChart.data.datasets[0].data.push(message.data);
+        lineChart.data.datasets[0].data.shift();
+        lineChart.update();
       });
+
+      };
+
 
     </script>
   </head>
@@ -73,6 +113,7 @@
           Connection closed.
         </p>
       </div>
+      <canvas id="line-chart" width="800" height="450"></canvas>
       <p>CPU Temp : <span id=cpu_temp>-</span></p>
   </body>
 </html>
