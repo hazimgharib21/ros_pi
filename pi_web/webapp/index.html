@@ -2,6 +2,13 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+
 
     <script type="text/javascript"
       src="http://static.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js">
@@ -31,7 +38,7 @@
             }]
           },
           options: {
-            responsive: true,
+            responsive: false,
             title: {
               display: true,
               text: "CPU Temperature",
@@ -42,53 +49,75 @@
             scales: {
               yAxes: [{
                 ticks: {
-                  begitAtZero: false,
+                  begitAtZero: true,
+                  max: 100,
+                  steps: 10,
+                  stepValue: 5,
                 }
               }]
             }
           }
         });
 
-      var ros = new ROSLIB.Ros();
+        var ros = new ROSLIB.Ros();
 
-      ros.on('connection', function() {
-        console.log('Connected to web socket');
-        document.getElementById('connecting').style.display = 'none';
-        document.getElementById('error').style.display = 'none';
-        document.getElementById('closed').style.display = 'none';
-        document.getElementById('connected').style.display = 'inline';
+        ros.on('connection', function() {
+          console.log('Connected to web socket');
+          document.getElementById('connecting').style.display = 'none';
+          document.getElementById('error').style.display = 'none';
+          document.getElementById('closed').style.display = 'none';
+          document.getElementById('connected').style.display = 'inline';
+            });
+
+        ros.on('error', function(error) {
+          console.log(error);
+          document.getElementById('connecting').style.display = 'none';
+          document.getElementById('error').style.display = 'inline';
+          document.getElementById('closed').style.display = 'none';
+          document.getElementById('connected').style.display = 'none';
+            });
+
+        ros.on('close', function() {
+          console.log('Connection closed');
+          document.getElementById('connecting').style.display = 'none';
+          document.getElementById('error').style.display = 'none';
+          document.getElementById('closed').style.display = 'inline';
+          document.getElementById('connected').style.display = 'none';
+            });
+
+        ros.connect('ws://' + location.host + ':9090');
+
+        var temp = new ROSLIB.Topic({
+          ros : ros,
+          name : 'pi/core/cpu_temp',
+          messageType : 'std_msgs/Float32'
+        });
+
+        temp.subscribe(function(message){
+          document.getElementById('cpu_temp').innerHTML = message.data;
+          lineChart.data.datasets[0].data.push(message.data);
+          lineChart.data.datasets[0].data.shift();
+          lineChart.update();
+        });
+
+        var ip_address_client = new ROSLIB.Service({
+          ros : ros,
+          name : 'network_adapters',
+          serviceType : 'pi_core/Network_Adapters'
+        });
+
+        var request = new ROSLIB.ServiceRequest();
+
+        ip_address_client.callService(request, function(result){
+          var ifaces = result.interfaces;
+          var address = result.addresses;
+          var text = "";
+          ifaces.forEach(function(value, i){
+            text = text + value + ' : ' + address[i] + '<br>';
           });
+          document.getElementById('network-adapter').innerHTML = text;
+        });
 
-      ros.on('error', function(error) {
-        console.log(error);
-        document.getElementById('connecting').style.display = 'none';
-        document.getElementById('error').style.display = 'inline';
-        document.getElementById('closed').style.display = 'none';
-        document.getElementById('connected').style.display = 'none';
-          });
-
-      ros.on('close', function() {
-        console.log('Connection closed');
-        document.getElementById('connecting').style.display = 'none';
-        document.getElementById('error').style.display = 'none';
-        document.getElementById('closed').style.display = 'inline';
-        document.getElementById('connected').style.display = 'none';
-          });
-
-      ros.connect('ws://' + location.host + ':9090');
-
-      var temp = new ROSLIB.Topic({
-        ros : ros,
-        name : 'pi/core/cpu_temp',
-        messageType : 'std_msgs/Float32'
-      });
-
-      temp.subscribe(function(message){
-        document.getElementById('cpu_temp').innerHTML = message.data;
-        lineChart.data.datasets[0].data.push(message.data);
-        lineChart.data.datasets[0].data.shift();
-        lineChart.update();
-      });
 
       };
 
@@ -113,7 +142,11 @@
           Connection closed.
         </p>
       </div>
-      <canvas id="line-chart" width="800" height="450"></canvas>
+      <canvas id="line-chart" width="250" height="250"></canvas>
       <p>CPU Temp : <span id=cpu_temp>-</span></p>
+      <div>
+        <p>Network Adapters</p>
+        <span id="network-adapter"></span>
+      </div>
   </body>
 </html>
