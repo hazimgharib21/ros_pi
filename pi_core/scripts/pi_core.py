@@ -4,6 +4,22 @@ import rospy
 import psutil
 from std_msgs.msg import Float32
 
+'''
+TO-DO
+
+Topic:
+    CPU Usage
+    CPU Freq
+    Mem Usage
+
+Service:
+    IP Address
+    Boot Time
+    Up Time
+    Disk Usage
+
+'''
+
 class pi_core:
 
     def __init__(self):
@@ -30,7 +46,7 @@ class pi_core:
         self.cpu_temp_pub_.publish(output)
 
 if __name__ == '__main__':
-    rospy.init_node('pi_core', anonymous=True)
+    rospy.init_node('pi_core')
     rospy.loginfo('pi_core started...')
     system_stat = pi_core()
     system_stat.update()
