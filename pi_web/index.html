@@ -28,41 +28,77 @@
 
       window.onload = function(){
 
-        var ctx = document.getElementById("line-chart");
-        var lineChart = new  Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: ["","","","","","","","","","","","","","","","","","","",""],
-            datasets: [{
-              data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            }]
-          },
-          options: {
-            responsive: false,
-            title: {
-              display: true,
-              text: "CPU Temperature",
-            },
-            legend: {
-              display: false
-            },
-            scales: {
-              yAxes: [{
-                ticks: {
-                  begitAtZero: true,
-                  max: 100,
-                  steps: 10,
-                  stepValue: 5,
-                }
+        var cpuTempChart = new Chart(
+          document.getElementById("cpu-temp-chart"), {
+            type: 'line',
+            data: {
+              labels: ["","","","","","","","","","","","","","","","","","","",""],
+              datasets: [{
+                data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
               }]
+            },
+            options: {
+              responsive: false,
+              title: {
+                display: true,
+                text: "CPU Temperature",
+              },
+              legend: {
+                display: false
+              },
+              scales: {
+                yAxes: [{
+                  ticks: {
+                    begitAtZero: true,
+                    max: 100,
+                    steps: 10,
+                    stepValue: 5,
+                  }
+                }]
+              }
             }
           }
-        });
+        );
+
+        var cpuUsageChart = new Chart(
+          document.getElementById("cpu-usage-chart"), {
+            type: 'line',
+            data: {
+              labels: ["","","","","","","","","","","","","","","","","","","",""],
+              datasets: [{
+                data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              }]
+            },
+            options: {
+              responsive: false,
+              title: {
+                display: true,
+                text: "CPU Usage",
+              },
+              legend: {
+                display: false
+              },
+              scales: {
+                yAxes: [{
+                  ticks: {
+                    begitAtZero: true,
+                    max: 100,
+                    steps: 10,
+                    stepValue: 5,
+                  }
+                }]
+              }
+            }
+          }
+        );
+
 
         var ros = new ROSLIB.Ros();
 
         ros.on('connection', function() {
           console.log('Connected to web socket');
+          document.getElementById('status').innerHTML = 'Connected';
+          document.getElementById('status').style.color = '#00D600';
           document.getElementById('connecting').style.display = 'none';
           document.getElementById('error').style.display = 'none';
           document.getElementById('closed').style.display = 'none';
@@ -71,6 +107,8 @@
 
         ros.on('error', function(error) {
           console.log(error);
+          document.getElementById('status').innerHTML = 'Error';
+          document.getElementById('status').style.color = '#FF0000';
           document.getElementById('connecting').style.display = 'none';
           document.getElementById('error').style.display = 'inline';
           document.getElementById('closed').style.display = 'none';
@@ -79,6 +117,8 @@
 
         ros.on('close', function() {
           console.log('Connection closed');
+          document.getElementById('status').innerHTML = 'Disconnected';
+          document.getElementById('status').style.color = 'Yellow';
           document.getElementById('connecting').style.display = 'none';
           document.getElementById('error').style.display = 'none';
           document.getElementById('closed').style.display = 'inline';
@@ -87,17 +127,30 @@
 
         ros.connect('ws://' + location.host + ':9090');
 
-        var temp = new ROSLIB.Topic({
+        var cpu_temp_sub = new ROSLIB.Topic({
           ros : ros,
           name : 'pi/core/cpu_temp',
           messageType : 'std_msgs/Float32'
         });
 
-        temp.subscribe(function(message){
-          document.getElementById('cpu_temp').innerHTML = message.data;
-          lineChart.data.datasets[0].data.push(message.data);
-          lineChart.data.datasets[0].data.shift();
-          lineChart.update();
+        cpu_temp_sub.subscribe(function(message){
+          document.getElementById('cpu-temp').innerHTML = message.data;
+          cpuTempChart.data.datasets[0].data.push(message.data);
+          cpuTempChart.data.datasets[0].data.shift();
+          cpuTempChart.update();
+        });
+
+        var cpu_usage_sub = new ROSLIB.Topic({
+          ros : ros,
+          name : 'pi/core/cpu_usage',
+          messageType : 'std_msgs/Int8'
+        });
+
+        cpu_usage_sub.subscribe(function(message){
+          document.getElementById('cpu-usage').innerHTML = message.data;
+          cpuUsageChart.data.datasets[0].data.push(message.data);
+          cpuUsageChart.data.datasets[0].data.shift();
+          cpuUsageChart.update();
         });
 
         var ip_address_client = new ROSLIB.Service({
@@ -117,8 +170,6 @@
           });
           document.getElementById('network-adapter').innerHTML = text;
         });
-
-
       };
 
 
@@ -126,7 +177,10 @@
   </head>
 
   <body>
-      <h1>Simple ROS User Interface</h1>
+    <nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+      <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">PIROS UI</a>
+      <p class="navbar-nav px-3"><span id="status" style="color:#00D600">Connected</span></p>
+    </nav>
       <p>Connection Status :</p>
       <div id="statusIndicator">
         <p id="connecting">
@@ -142,8 +196,10 @@
           Connection closed.
         </p>
       </div>
-      <canvas id="line-chart" width="250" height="250"></canvas>
-      <p>CPU Temp : <span id=cpu_temp>-</span></p>
+      <canvas id="cpu-temp-chart" width="250" height="250"></canvas>
+      <p>CPU Temp : <span id=cpu-temp>-</span> C</p>
+      <canvas id="cpu-usage-chart" width="250" height="250"></canvas>
+      <p>CPU Usage : <span id=cpu-usage>-</span>%</p>
       <div>
         <p>Network Adapters</p>
         <span id="network-adapter"></span>
